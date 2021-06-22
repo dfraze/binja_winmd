@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import json
 import codecs
 import sys
@@ -16,6 +17,7 @@ p = Path(sys.argv[1])
 files = p.glob("*.json")
 
 for file in files:
+  print(f'+++ Loading {file}')
   api_namespaces[file.stem] = json.load(codecs.open(file, "r", "utf-8-sig"))
 
 def kind_to_bn_type(kind):
@@ -165,6 +167,7 @@ for namespace in api_namespaces:
   print(f"+++ Processing namespace {namespace} ({i} of {len(api_namespaces)})")
   i+=1
   funcs = metadata["Functions"]
+  print(f"  +++ Processing {len(funcs)} functions")
   for f in funcs:
     ret_type = handle_json_type(f["ReturnType"])
     param_list = []
@@ -176,5 +179,7 @@ for namespace in api_namespaces:
     typelib.add_named_type(f["Name"], new_func)
     func_count+=1
 
+print(f"+++ Finalizing")
 typelib.finalize()
+print(f"+++ Writing")
 typelib.write_to_file(sys.argv[2])
