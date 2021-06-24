@@ -73,11 +73,11 @@ def handle_json_type(t):
     else:
       return binaryninja.types.Type.pointer(arch, handle_json_type(t["Child"]))
   if t["Kind"] == "ApiRef":
-    found_type = typelib.get_named_type(t["Name"])
-    if found_type:
-      return found_type
-    else:
-      return binaryninja.types.Type.named_type(binaryninja.types.NamedTypeReference(name=t["Name"]))
+#    found_type = typelib.get_named_type(t["Name"])
+#    if found_type:
+#      return found_type
+#    else:
+    return binaryninja.types.Type.named_type(binaryninja.types.NamedTypeReference(name=t["Name"]))
   if t["Kind"] == "Struct":
     for nested_type in t["NestedTypes"]:
       typelib.add_named_type(nested_type["Name"], handle_json_type(nested_type))
