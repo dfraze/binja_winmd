@@ -10,6 +10,7 @@ from pathlib import Path
 typelib = binaryninja.typelibrary.TypeLibrary.new(binaryninja.Architecture["x86_64"], "Win32")
 arch = binaryninja.Architecture["x86_64"]
 api_namespaces = {}
+altnames = set()
 
 def kind_to_bn_type(kind):
   if kind["Kind"] == "Native":
@@ -139,7 +140,7 @@ def create_bn_type_from_json(t):
     print(f"Found unknown type kind: {t['Kind']}")
 
 
-def do_it(in_dir, out_dir):
+def do_it(in_dir, out_file):
   p = Path(in_dir)
 
   files = p.glob("*.json")
@@ -167,6 +168,7 @@ def do_it(in_dir, out_dir):
     i+=1
     funcs = metadata["Functions"]
     for f in funcs:
+      altnames.add(f["DllImport"])
       ret_type = handle_json_type(f["ReturnType"])
       param_list = []
       for param in f["Params"]:
@@ -177,8 +179,12 @@ def do_it(in_dir, out_dir):
       typelib.add_named_object(f["Name"], new_func)
       func_count+=1
 
+  for dll in altnames:
+    logging.info(f"Adding {dll} to alt names.")
+    typelib.add_alternate_name(dll)
+
   typelib.finalize()
-  typelib.write_to_file(out_dir)
+  typelib.write_to_file(out_file)
 
 if __name__ == "__main__":
   _args = ArgumentParser(description='Build a typelib from win32json project')
