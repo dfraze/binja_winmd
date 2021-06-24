@@ -2,21 +2,14 @@
 import json
 import codecs
 import sys
+import logging
 import binaryninja
+from argparse import ArgumentParser
 from pathlib import Path
 
 typelib = binaryninja.typelibrary.TypeLibrary.new(binaryninja.Architecture["x86_64"], "Win32")
 arch = binaryninja.Architecture["x86_64"]
 api_namespaces = {}
-
-print(f"Usage: {sys.argv[0]} /path/to/win32json /path/to/write/typelib")
-
-p = Path(sys.argv[1])
-
-files = p.glob("*.json")
-
-for file in files:
-  api_namespaces[file.stem] = json.load(codecs.open(file, "r", "utf-8-sig"))
 
 def kind_to_bn_type(kind):
   if kind["Kind"] == "Native":
@@ -146,35 +139,53 @@ def create_bn_type_from_json(t):
     print(f"Found unknown type kind: {t['Kind']}")
 
 
-print("Making a bunch of types...")
-i = 1
-for namespace in api_namespaces:
-  metadata = api_namespaces[namespace]
-  print(f"+++ Processing namespace {namespace} ({i} of {len(api_namespaces)})")
-  i+=1
-  types = metadata["Types"]
-  for t in types:
-    create_bn_type_from_json(t)
+def do_it(in_dir, out_dir):
+  p = Path(in_dir)
 
-print("Alright, now let's do some functions")
+  files = p.glob("*.json")
 
-i = 1
-func_count = 0
-for namespace in api_namespaces:
-  metadata = api_namespaces[namespace]
-  print(f"+++ Processing namespace {namespace} ({i} of {len(api_namespaces)})")
-  i+=1
-  funcs = metadata["Functions"]
-  for f in funcs:
-    ret_type = handle_json_type(f["ReturnType"])
-    param_list = []
-    for param in f["Params"]:
-      new_param = handle_json_type(param["Type"])
-      real_new_param = binaryninja.types.FunctionParameter(new_param, param["Name"])
-      param_list.append(real_new_param)
-    new_func = binaryninja.types.Type.function(ret_type, param_list)
-    typelib.add_named_type(f["Name"], new_func)
-    func_count+=1
+  for file in files:
+    api_namespaces[file.stem] = json.load(codecs.open(file, "r", "utf-8-sig"))
 
-typelib.finalize()
-typelib.write_to_file(sys.argv[2])
+  logging.info("Making a bunch of types...")
+  i = 1
+  for namespace in api_namespaces:
+    metadata = api_namespaces[namespace]
+    logging.debug(f"+++ Processing namespace {namespace} ({i} of {len(api_namespaces)})")
+    i+=1
+    types = metadata["Types"]
+    for t in types:
+      create_bn_type_from_json(t)
+
+  logging.info("Alright, now let's do some functions")
+
+  i = 1
+  func_count = 0
+  for namespace in api_namespaces:
+    metadata = api_namespaces[namespace]
+    logging.debug(f"+++ Processing namespace {namespace} ({i} of {len(api_namespaces)})")
+    i+=1
+    funcs = metadata["Functions"]
+    for f in funcs:
+      ret_type = handle_json_type(f["ReturnType"])
+      param_list = []
+      for param in f["Params"]:
+        new_param = handle_json_type(param["Type"])
+        real_new_param = binaryninja.types.FunctionParameter(new_param, param["Name"])
+        param_list.append(real_new_param)
+      new_func = binaryninja.types.Type.function(ret_type, param_list)
+      typelib.add_named_object(f["Name"], new_func)
+      func_count+=1
+
+  typelib.finalize()
+  typelib.write_to_file(out_dir)
+
+if __name__ == "__main__":
+  _args = ArgumentParser(description='Build a typelib from win32json project')
+  _args.add_argument("win32json_api_directory")
+  _args.add_argument("output_dir")
+  _args.add_argument("-v", action="count", help="Increase logging verbosity. Can specify multiple times.")
+  args = _args.parse_args()
+  if args.v != None:
+    logging.basicConfig(level=max(30-(args.v * 10), 0))
+  do_it(args.win32json_api_directory, args.output_dir)
