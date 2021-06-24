@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 typelib = binaryninja.typelibrary.TypeLibrary.new(binaryninja.Architecture["x86_64"], "Win32")
+typelib.add_platform(binaryninja.Platform["windows-x86_64"])
 arch = binaryninja.Architecture["x86_64"]
 api_namespaces = {}
 altnames = set()
@@ -181,7 +182,7 @@ def do_it(in_dir, out_file):
 
   for dll in altnames:
     logging.info(f"Adding {dll} to alt names.")
-    typelib.add_alternate_name(dll)
+    typelib.add_alternate_name(f"{dll}.dll".lower())
 
   typelib.finalize()
   typelib.write_to_file(out_file)
