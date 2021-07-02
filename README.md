@@ -6,7 +6,7 @@ Make a Binary Ninja type library with Windows types.
 * https://github.com/microsoft/win32metadata scrapes Windows SDK headers and produces C# files
 * https://github.com/marlersoft/win32jsongen converts the C# files into .json
 * https://github.com/marlersoft/win32json stores the output from win32jsongen (~100mb)
-* (this project) converts the json into a Binary Ninja type library (~900mb)
+* (this project) converts the json into a Binary Ninja type library (~6mb)
 
 ### Running
 
