@@ -68,11 +68,11 @@ def handle_json_type(t):
     else:
       return binaryninja.types.Type.pointer(arch, handle_json_type(t["Child"]))
   if t["Kind"] == "ApiRef":
-    return binaryninja.types.Type.named_type(binaryninja.types.NamedTypeReference(name=t["Name"]))
+    return binaryninja.types.Type.named_type(binaryninja.types.NamedTypeReferenceBuilder.named_type_from_type(name=t["Name"]))
   if t["Kind"] == "Struct":
     for nested_type in t["NestedTypes"]:
       typelib.add_named_type(nested_type["Name"], handle_json_type(nested_type))
-    new_struct = binaryninja.types.Structure()
+    new_struct = binaryninja.types.TypeBuilder.structure()
     for field in t["Fields"]:
       child_type = handle_json_type(field["Type"])
       new_struct.append(child_type, field["Name"])
@@ -82,8 +82,7 @@ def handle_json_type(t):
   if t["Kind"] == "Union":
     for nested_type in t["NestedTypes"]:
       typelib.add_named_type(nested_type["Name"], handle_json_type(nested_type))
-    new_union = binaryninja.types.Structure()
-    new_union.type = binaryninja.enums.StructureType.UnionStructureType
+    new_union = binaryninja.types.TypeBuilder.union()
     for field in t["Fields"]:
       child_type = handle_json_type(field["Type"])
       new_union.append(child_type, field["Name"])
@@ -99,7 +98,7 @@ def create_bn_type_from_json(t):
     new_typedef = handle_json_type(t["Def"])
     real_new_type = typelib.add_named_type(t["Name"], new_typedef)
   elif t["Kind"] == "Enum":
-    new_enum = binaryninja.types.Enumeration()
+    new_enum = binaryninja.types.TypeBuilder.enumeration()
     for member in t["Values"]:
       new_enum.append(member["Name"], int(member["Value"]))
     real_new_type = binaryninja.types.Type.named_type_from_type(t["Name"], binaryninja.types.Type.enumeration_type(arch,new_enum))
@@ -116,7 +115,7 @@ def create_bn_type_from_json(t):
       param_list.append(real_new_param)
     typelib.add_named_type(t["Name"], binaryninja.types.Type.pointer(arch, binaryninja.types.Type.function(ret_type, param_list)))
   elif t["Kind"] == "Com":
-    new_struct = binaryninja.types.Structure()
+    new_struct = binaryninja.types.TypeBuilder.structure()
     for method in t["Methods"]:
       ret_type = handle_json_type(method["ReturnType"])
       param_list = []
@@ -124,8 +123,9 @@ def create_bn_type_from_json(t):
         new_param = handle_json_type(param["Type"])
         real_new_param = binaryninja.types.FunctionParameter(new_param, param["Name"])
         param_list.append(real_new_param)
-      new_func = binaryninja.types.Type.function(ret_type, param_list)
-      new_struct.append(binaryninja.types.Type.pointer(arch, new_func), method["Name"])
+      new_func = binaryninja.types.TypeBuilder.function(ret_type, param_list)
+      new_pointer = binaryninja.types.TypeBuilder.pointer(arch, new_func.immutable_copy())
+      new_struct.append(new_pointer, method["Name"])
     typelib.add_named_type(t["Name"], binaryninja.types.Type.structure_type(new_struct))
   elif t["Kind"] == "ComClassID":
     return None
